@@ -29,6 +29,8 @@ import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 
@@ -857,4 +859,200 @@ public class XML {
                         + ">" + string + "</" + tagName + ">";
 
     }
+
+    /**
+     * Read an XML file into a JSON object, and extract some smaller sub-object inside,
+     * given a certain path (use JSONPointer)
+     *
+     * @param reader
+     *      A file reader
+     * @param path
+     *      A JSONPointer object that allows to query and navigate into a Json Object
+     * @return A JSONObject containing the structured data from the XML string.
+     * @throws JSONException Thrown if there is an errors while parsing the string
+     */
+
+        public static JSONObject toJSONObject(Reader reader, JSONPointer path){
+        String[] keys = path.toString().substring(1).split("/");
+
+        int keyIndex = 0;      // stop parsing when keyIndex = keyCount
+        int keyCount = keys.length;
+        boolean isEndOfArray = false;
+        ArrayList<String> tags = new ArrayList<String>();
+
+        XMLTokener x = new XMLTokener(reader);
+        while (x.more()) {
+            x.skipPast("<");
+            if(x.more()) {
+                Object currentLine = x.nextContent();
+                if (currentLine instanceof String) {
+                    String currentLineString = (String)currentLine;
+//                    System.out.println(currentLineString);
+                    // ignore the xml description tags
+                    // search thru the tag with content doesn't start with "?"
+                    if (currentLineString.charAt(0) != '?') {
+                        if (keyIndex < keyCount) {
+                            // check <starting tag> has the current checking key
+                            if (keys[keyIndex].equals(currentLineString.substring(0, keys[keyIndex].length()))) {
+                                // meh it was false alarm, set the isEndOfArray to false and continue
+                                if (isEndOfArray)
+                                    isEndOfArray = false;
+
+                                // only want the line string from the tag that equals last key
+                                if (keyIndex == keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                }
+
+                                // only when the first key we increment keyIndex immediately
+                                // other keys can be the tag of array, need to find the end of array
+                                if (keyIndex == 0)
+                                    keyIndex++;
+                            } else if (currentLineString.charAt(0) == '/' && keys[keyIndex].equals(currentLineString.substring(1, keys[keyIndex].length() + 1))) {
+                                // check <closing tag> has the current checking key, mark it
+                                // if the next tag is not the current checking key, then end of array
+                                isEndOfArray = true;
+
+                                // only want the line string from the tag that equals last key
+                                if (keyIndex == keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                }
+                            } else {
+                                // end of array reached, break the loop
+                                if (isEndOfArray)
+                                    keyIndex++;
+
+                                // only want the line string from the tag that equals last key
+                                if (keyIndex == keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // merge String tags and convert them into JSONObject
+        String tagsToString = "";
+        for (String s : tags) {
+            tagsToString += s;
+        }
+        System.out.println(tagsToString);
+        JSONObject subObject = toJSONObject(tagsToString);
+        System.out.println("\n\n-------------- JSONObject converted ------------");
+        System.out.println(subObject.toString(4));
+        return subObject;
+    }
+
+    /**
+     * Read an XML file into a JSON object, replace a sub-object on a certain key path with
+     * another JSON object that you construct
+     *
+     * @param reader
+     *      A file reader
+     * @param path
+     *      A JSONPointer object that allows to query and navigate into a Json Object
+     * @param replacement
+     *      A replacement sub-object
+     * @return A JSONObject containing the structured data from the XML string.
+     * @throws JSONException Thrown if there is an errors while parsing the string
+     */
+    public static JSONObject toJSONObject(Reader reader, JSONPointer path, JSONObject replacement) {
+        String[] keys = path.toString().substring(1).split("/");
+
+        int keyIndex = 0;      // stop parsing when keyIndex = keyCount
+        int keyCount = keys.length;
+        boolean isEndOfArray = false;
+        boolean lastKey = false;
+        ArrayList<String> tags = new ArrayList<String>();
+
+        XMLTokener x = new XMLTokener(reader);
+        while (x.more()) {
+            x.skipPast("<");
+            if(x.more()) {
+                Object currentLine = x.nextContent();
+                if (currentLine instanceof String) {
+                    String currentLineString = (String)currentLine;
+//                    System.out.println(currentLineString);
+                    // ignore the xml description tags
+                    // search thru the tag with content doesn't start with "?"
+                    if (currentLineString.charAt(0) != '?') {
+                        if (keyIndex < keyCount) {
+                            // check <starting tag> has the current checking key
+                            if (keys[keyIndex].equals(currentLineString.substring(0, keys[keyIndex].length()))) {
+                                // meh it was false alarm, set the isEndOfArray to false and continue
+                                if (isEndOfArray)
+                                    isEndOfArray = false;
+
+                                // only want the line string before the last key
+                                if (keyIndex < keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                } else {
+                                    if (!lastKey) {
+                                        currentLineString = "<" + currentLineString;
+                                        tags.add(currentLineString);
+                                        lastKey = true;
+                                    }
+
+                                }
+                                // only when the first key we increment keyIndex immediately
+                                // other keys can be the tag of array, need to find the end of array
+                                if (keyIndex == 0)
+                                    keyIndex++;
+                            } else if (currentLineString.charAt(0) == '/' && keys[keyIndex].equals(currentLineString.substring(1, keys[keyIndex].length() + 1))) {
+                                // check <closing tag> has the current checking key, mark it
+                                // if the next tag is not the current checking key, then end of array
+                                isEndOfArray = true;
+
+                                // only want the line string before the last key
+                                if (keyIndex < keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                }
+                            } else {
+                                // end of array reached, break the loop
+                                if (isEndOfArray)
+                                    keyIndex++;
+
+                                // only want the line string from the tag that equals last key
+                                if (keyIndex < keyCount-1) {
+                                    currentLineString = "<" + currentLineString;
+                                    tags.add(currentLineString);
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // merge String tags and convert them into JSONObject
+        String tagsToString = "";
+        for (String s : tags) {
+            tagsToString += s;
+        }
+
+//        <catalog><book id="bk101">{"author":"NA","price":"NA","genre":"NA","description":"NA","id":"NA","title":"NA","publish_date":"NA"}</book id="bk101"></catalog>
+        tagsToString += XML.toString(replacement);
+
+        for (int i = tags.size()-1; i >-1; i--) {
+            int check = tags.get(i).indexOf(" ");
+            if (check ==-1 )
+                tagsToString += "</" + tags.get(i).substring(1);
+            else
+                tagsToString += "</" + tags.get(i).substring(1, check) + ">";
+        }
+        System.out.println(tagsToString);
+
+        JSONObject subObject = toJSONObject(tagsToString);
+        System.out.println("\n\n-------------- JSONObject converted ------------");
+        System.out.println(subObject.toString());
+        return subObject;
+    }
+
 }
