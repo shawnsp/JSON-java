@@ -32,6 +32,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.function.Function;
 
 
 /**
@@ -860,6 +861,8 @@ public class XML {
 
     }
 
+
+//    ---------------------------- Milestone 2 ------------------------------
     /**
      * Read an XML file into a JSON object, and extract some smaller sub-object inside,
      * given a certain path (use JSONPointer)
@@ -1055,4 +1058,72 @@ public class XML {
         return subObject;
     }
 
+
+    //    ---------------------------- Milestone 3 ------------------------------
+
+    /**
+     * Read an XML file into a JSON object, transform the key with another another key by passing in a
+     * keyTransformer function and call it inside toJSONObject
+     *
+     * @param reader
+     *      A file reader
+     * @param keyTransformer
+     *      A function method that transfer key
+     * @return A JSONObject containing new changed keys
+     * @throws JSONException Thrown if there is an errors while parsing the string
+     */
+    public static JSONObject toJSONObject(Reader reader, Function<String, String> keyTransformer) {
+        ArrayList<String> tags = new ArrayList<>();
+
+        XMLTokener x = new XMLTokener(reader);
+        while (x.more()) {
+            x.skipPast("<");
+            if (x.more()) {
+                Object currentLine = x.nextContent();
+                if (currentLine instanceof String) {
+                    String currentLineString = (String) currentLine;
+                    if (currentLineString.charAt(0) != '?' && currentLineString.charAt(0) != '!') {
+                        // now the current line could be a start tag or an end tag(begin with "/")
+                        // extract the key and call keyTransformer
+                        // then construct the line back together
+                        if (currentLineString.charAt(0) == '/') {
+                            int beginIndex = 1;
+                            int endIndex = currentLineString.indexOf(">");
+                            String originalKey = currentLineString.substring(beginIndex, endIndex);
+                            String newKey = keyTransformer.apply(originalKey);
+                            currentLineString = "</" + newKey + currentLineString.substring(endIndex);
+                        } else {
+                            int beginIndex = 0;
+                            int endIndex = currentLineString.indexOf(">");
+                            if (currentLineString.substring(beginIndex, endIndex).contains("id=")) {
+                                // if there is an id in the starting tag, both key and id need to be transformed
+                                endIndex = currentLineString.indexOf("id=")-1;
+                                String originalKey = currentLineString.substring(beginIndex, endIndex);
+                                String newKey = keyTransformer.apply(originalKey);
+
+                                String newIdKey = keyTransformer.apply("id");
+                                currentLineString = "<" + newKey + " " + newIdKey + currentLineString.substring(currentLineString.indexOf("id=") + 2);
+                            } else {
+                                String originalKey = currentLineString.substring(beginIndex, endIndex);
+                                String newKey = keyTransformer.apply(originalKey);
+                                currentLineString = "<" + newKey + currentLineString.substring(endIndex);
+                            }
+                        }
+
+                        tags.add(currentLineString);
+//                        System.out.println("now: " + currentLineString);
+                    }
+                }
+            }
+        }
+        String tagsToString = "";
+        for (String s : tags) {
+            tagsToString += s;
+        }
+//        System.out.println(tagsToString);
+        JSONObject newObject = toJSONObject(tagsToString);
+        System.out.println("Milestone3");
+        System.out.println(newObject.toString(4));
+        return newObject;
+    }
 }
