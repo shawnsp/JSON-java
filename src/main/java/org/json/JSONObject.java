@@ -46,6 +46,7 @@ import java.util.Map.Entry;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * A JSONObject is an unordered collection of name/value pairs. Its external
@@ -2645,4 +2646,58 @@ public class JSONObject {
                 "JSONObject[" + quote(key) + "] is not a " + valueType + " (" + value + ")."
                 , cause);
     }
+
+
+    //    ---------------------------- Milestone 4 ------------------------------
+    Stream.Builder<Object> streamBuilder = Stream.builder();
+    /**
+     * Recursive constructor helper function for toStream() to build stream from a complex JSONObject structure
+     * @param key key of an object
+     * @param value value of an object
+     */
+    public void toStream(String key, Object value) {
+        if(value instanceof JSONObject) {
+            for (Entry<String, Object> entry : ((JSONObject) value).entrySet()){
+                if(entry.getValue() instanceof JSONObject || entry.getValue() instanceof JSONArray) {
+                    toStream(key + "/" + entry.getKey(), entry.getValue());
+                } else {
+                    // store each node as a key value pari map
+                    HashMap<String, Object> map = new HashMap<>();
+                    map.put(key + "/"+entry.getKey(),entry.getValue());
+                    streamBuilder.add(map);
+                }
+            }
+        } else {
+            int index = 0;
+            for (Object object : (JSONArray) value){
+                index++;
+                if(object instanceof JSONArray || object instanceof JSONObject) {
+                    toStream(key + "/" + index, object);
+                } else {
+                    HashMap<String,Object>map = new HashMap<>();
+                    map.put(key + "/" + index, object);
+                    streamBuilder.add(map);
+                }
+            }
+        }
+    }
+
+    /**
+     * Transform a JSONObject to a stream of JSONObject
+     * @return stream of object inside the given JSONObject (either JSONObject or JSONArrayy)
+     */
+     public Stream<Object> toStream() {
+         for (Entry<String, Object> entry : this.map.entrySet()) {
+             if (NULL.equals(entry)) {
+                 streamBuilder.add(null);
+             } else if (entry.getValue() instanceof JSONObject || entry.getValue() instanceof JSONArray) {
+                 toStream("/" + entry.getKey(), entry.getValue());
+             } else {
+                 HashMap<String, Object> map = new HashMap<>();
+                 map.put("/" + entry.getKey(), entry.getValue());
+                 streamBuilder.add(map);
+             }
+         }
+         return streamBuilder.build();
+     }
 }
