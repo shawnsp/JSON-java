@@ -2,12 +2,15 @@ package test_262P;
 
 import org.json.*;
 import org.json.junit.Util;
+import org.junit.Assert;
 import org.junit.Test;
 import java.io.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 
 /**
@@ -606,4 +609,128 @@ public class XMLTest {
             e.printStackTrace();
         }
     }
+
+
+    //    ---------------------------- Milestone 5 ------------------------------
+    /**
+     * test on "Future<JSONObject> toJSONObject(Reader reader, Function<String, String> keyTransformer, Consumer<Exception> exceptionHandler)"
+     * expect to return correct output
+     */
+    @Test
+    public void testTransformJSONObjectKeyAsyn(){
+        try {
+            FileReader reader = new FileReader("src/test/java/test_262P/planes.xml");
+            Function<String, String> keyTransformer = (key) -> "swe262_" + key;
+            Consumer<Exception> exceptionHandler = (e) -> e.printStackTrace();
+
+            Future<JSONObject> futureActual = XML.toJSONObject(reader, keyTransformer, exceptionHandler);
+            String expect = "{\"swe262_planes_for_sale\": {\"swe262_ad\": [\n" +
+                    "    {\n" +
+                    "        \"swe262_location\": {\n" +
+                    "            \"swe262_city\": \"Rapid City,\",\n" +
+                    "            \"swe262_state\": \"South Dakota\"\n" +
+                    "        },\n" +
+                    "        \"swe262_price\": \"23,495\",\n" +
+                    "        \"swe262_make\": \"&c;\",\n" +
+                    "        \"swe262_seller\": {\n" +
+                    "            \"phone\": \"555-222-3333\",\n" +
+                    "            \"content\": \"Skyway Aircraft\"\n" +
+                    "        },\n" +
+                    "        \"swe262_model\": \"Skyhawk\",\n" +
+                    "        \"swe262_description\": \"New paint, nearly new interior,\\n            685 hours SMOH, full IFR King avionics\",\n" +
+                    "        \"swe262_year\": 1977,\n" +
+                    "        \"swe262_color\": \"Light blue and white\"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "        \"swe262_location\": {\n" +
+                    "            \"swe262_city\": \"St. Joseph,\",\n" +
+                    "            \"swe262_state\": \"Missouri\"\n" +
+                    "        },\n" +
+                    "        \"swe262_make\": \"&p;\",\n" +
+                    "        \"swe262_seller\": {\n" +
+                    "            \"phone\": \"555-333-2222\",\n" +
+                    "            \"email\": \"jseller@www.axl.com\",\n" +
+                    "            \"content\": \"John Seller\"\n" +
+                    "        },\n" +
+                    "        \"swe262_model\": \"Cherokee\",\n" +
+                    "        \"swe262_description\": \"240 hours SMOH, dual NAVCOMs, DME, \\n                new Cleveland brakes, great shape\",\n" +
+                    "        \"swe262_year\": 1965,\n" +
+                    "        \"swe262_color\": \"Gold\"\n" +
+                    "    }\n" +
+                    "]}}";
+
+            // block the execution until the task is complete
+            while(!futureActual.isDone()) {
+                System.out.println("Calculating...");
+                Thread.sleep(300);
+            }
+
+            JSONObject actual = futureActual.get();
+
+            Util.compareActualVsExpectedJsonObjects(actual, new JSONObject(expect));
+            reader.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Fail to close file.");
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            System.out.println("Something wrong while blockign futureActual.isDone().");
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            System.out.println("error found when executing futureActual.get().");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * test on "Future<JSONObject> toJSONObject(Reader reader, Function<String, String> keyTransformer, Consumer<Exception> exceptionHandler)"
+     * expect futureActual.get() will return a JSONObject eventually
+     */
+    @Test
+    public void testTransformJSONObjectKeyAsynReturnType() {
+        try {
+            FileReader reader = new FileReader("src/test/java/test_262P/planes.xml");
+            Function<String, String> keyTransformer = (key) -> "swe262_" + key;
+            Consumer<Exception> exceptionHandler = (e) -> e.printStackTrace();
+
+            Future<JSONObject> futureActual = XML.toJSONObject(reader, keyTransformer, exceptionHandler);
+
+            // block the execution until the task is complete
+            while (!futureActual.isDone()) {
+                System.out.println("Calculating...");
+                Thread.sleep(300);
+            }
+
+            JSONObject actual = futureActual.get();
+
+            assertTrue(actual instanceof JSONObject);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * test on "Future<JSONObject> toJSONObject(Reader reader, Function<String, String> keyTransformer, Consumer<Exception> exceptionHandler)"
+     * check the pass in exceptionHandler is working correctly
+     * expect print "OMG ERROR!!" and futureActual return null
+     */
+    @Test
+    public void testTransformJSONObjectKeyAsynExceptionHandler() {
+        try {
+            FileReader reader = new FileReader("src/test/java/test_262P/planes.xml");
+            Consumer<Exception> exceptionHandler = (e) -> System.out.println("OMG ERROR!!");
+
+            Future<JSONObject> futureActual = XML.toJSONObject(reader, null, exceptionHandler);
+            assertNull(futureActual);
+        } catch (FileNotFoundException e) {
+                e.printStackTrace();
+        }
+    }
+
 }

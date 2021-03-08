@@ -32,6 +32,10 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 
@@ -1060,7 +1064,6 @@ public class XML {
 
 
     //    ---------------------------- Milestone 3 ------------------------------
-
     /**
      * Read an XML file into a JSON object, transform the key with another another key by passing in a
      * keyTransformer function and call it inside toJSONObject
@@ -1122,8 +1125,60 @@ public class XML {
         }
 //        System.out.println(tagsToString);
         JSONObject newObject = toJSONObject(tagsToString);
-        System.out.println("Milestone3");
-        System.out.println(newObject.toString(4));
+        System.out.println("[toJSONObject(Reader reader, Function<String, String> keyTransformer)]\n" +
+                newObject.toString(4));
         return newObject;
+    }
+
+
+    //    ---------------------------- Milestone 5 ------------------------------
+    /**
+     * FutureJsonObject class to construct Future object of JSONObject for making making asynchronous \
+     * toJSONObject call
+     */
+    private static class FutureJsonObject {
+        private ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        public Future<JSONObject> toJSONObject(Reader reader, Function keyTransformer) throws Exception{
+            return executor.submit(() -> {
+                System.out.println("[FutureJsonObject]");
+                return XML.toJSONObject(reader, keyTransformer);
+            });
+        }
+
+        public void stopFuture() {
+            executor.shutdown();
+        }
+    }
+
+    /**
+     * Read an XML file into a FutureJsonObject, transform the key with another another key by passing in a
+     * keyTransformer function and call it inside toJSONObject
+     *
+     * @param reader
+     *      A file reader
+     * @param keyTransformer
+     *      A function method that transfer key
+     * @param exceptionHandler
+     *      A function method that handle exception
+     * @return A Future Object of JSONObject containing new changed keys
+     * @throws Exception handle by passed in exceptionHandler
+     */
+    public static Future<JSONObject> toJSONObject(Reader reader, Function<String, String> keyTransformer, Consumer<Exception> exceptionHandler) {
+        FutureJsonObject future;
+        Future<JSONObject> futureObject = null;
+        try {
+            if (keyTransformer == null)
+                throw new Exception();
+            future = new FutureJsonObject();
+            futureObject = future.toJSONObject(reader, keyTransformer);
+
+            // shutdown executor when future toJSONObject is done
+            if (futureObject.isDone())
+                future.stopFuture();
+        } catch (Exception e) {
+            exceptionHandler.accept(e);
+        }
+        return futureObject;
     }
 }
