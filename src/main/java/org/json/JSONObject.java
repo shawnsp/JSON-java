@@ -2650,6 +2650,26 @@ public class JSONObject {
 
     //    ---------------------------- Milestone 4 ------------------------------
     Stream.Builder<Object> streamBuilder = Stream.builder();
+
+    /**
+     * Transform a JSONObject to a stream of JSONObject
+     * @return stream of object(null, HashMap) inside the given JSONObject (either JSONObject or JSONArrayy)
+     */
+     public Stream<Object> toStream() {
+         for (Entry<String, Object> entry : this.map.entrySet()) {
+             if (NULL.equals(entry)) {
+                 streamBuilder.add(null);
+             } else if (entry.getValue() instanceof JSONObject || entry.getValue() instanceof JSONArray) {
+                 toStream("/" + entry.getKey(), entry.getValue());
+             } else {
+                 HashMap<String, Object> map = new HashMap<>();
+                 map.put("/" + entry.getKey(), entry.getValue());
+                 streamBuilder.add(map);
+             }
+         }
+         return streamBuilder.build();
+     }
+
     /**
      * Recursive constructor helper function for toStream() to build stream from a complex JSONObject structure
      * @param key key of an object
@@ -2661,7 +2681,7 @@ public class JSONObject {
                 if(entry.getValue() instanceof JSONObject || entry.getValue() instanceof JSONArray) {
                     toStream(key + "/" + entry.getKey(), entry.getValue());
                 } else {
-                    // store each node as a key value pari map
+                    // store each node as a key value pair map
                     HashMap<String, Object> map = new HashMap<>();
                     map.put(key + "/"+entry.getKey(),entry.getValue());
                     streamBuilder.add(map);
@@ -2681,23 +2701,4 @@ public class JSONObject {
             }
         }
     }
-
-    /**
-     * Transform a JSONObject to a stream of JSONObject
-     * @return stream of object inside the given JSONObject (either JSONObject or JSONArrayy)
-     */
-     public Stream<Object> toStream() {
-         for (Entry<String, Object> entry : this.map.entrySet()) {
-             if (NULL.equals(entry)) {
-                 streamBuilder.add(null);
-             } else if (entry.getValue() instanceof JSONObject || entry.getValue() instanceof JSONArray) {
-                 toStream("/" + entry.getKey(), entry.getValue());
-             } else {
-                 HashMap<String, Object> map = new HashMap<>();
-                 map.put("/" + entry.getKey(), entry.getValue());
-                 streamBuilder.add(map);
-             }
-         }
-         return streamBuilder.build();
-     }
 }

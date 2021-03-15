@@ -30,13 +30,13 @@ public class JSONObjectStreamTest {
             expectedPrice.add(((HashMap)book).get("price"));
         }
 
-        List<Object> actualTitles = actualObject.toStream()
+        List<Object> actualPrice = actualObject.toStream()
                 .filter(node -> ((HashMap) node).keySet().iterator().next().toString().contains("/catalog/book"))
                 .filter(node -> ((HashMap) node).keySet().iterator().next().toString().contains("/price"))
                 .map(node -> new ArrayList<Object>(((HashMap) node).values()).get(0))
                 .collect(Collectors.toList());
 
-        assertEquals(expectedPrice, actualTitles);
+        assertEquals(expectedPrice, actualPrice);
     }
 
     /**

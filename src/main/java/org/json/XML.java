@@ -896,8 +896,8 @@ public class XML {
                     String currentLineString = (String)currentLine;
 //                    System.out.println(currentLineString);
                     // ignore the xml description tags
-                    // search thru the tag with content doesn't start with "?"
-                    if (currentLineString.charAt(0) != '?') {
+                    // search thru the tag with content doesn't start with ? and !
+                    if ((currentLineString.charAt(0) != '?' && currentLineString.charAt(0) != '!')) {
                         if (keyIndex < keyCount) {
                             // check <starting tag> has the current checking key
                             if (keys[keyIndex].equals(currentLineString.substring(0, keys[keyIndex].length()))) {
@@ -1133,7 +1133,7 @@ public class XML {
 
     //    ---------------------------- Milestone 5 ------------------------------
     /**
-     * FutureJsonObject class to construct Future object of JSONObject for making making asynchronous \
+     * FutureJsonObject class to construct Future object of JSONObject for making asynchronous
      * toJSONObject call
      */
     private static class FutureJsonObject {
@@ -1179,6 +1179,7 @@ public class XML {
         } catch (Exception e) {
             exceptionHandler.accept(e);
         }
+        System.out.println("here");
         return futureObject;
     }
 }
